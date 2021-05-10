@@ -1,205 +1,200 @@
-# setup-node
+# Hello Kubernetes!
+User of Argocd in webpage: admin
+password: name of server pod
 
-<p align="left">
-  <a href="https://github.com/actions/setup-node/actions?query=workflow%3Abuild-test"><img alt="build-test status" src="https://github.com/actions/setup-node/workflows/build-test/badge.svg"></a> <a href="https://github.com/actions/setup-node/actions?query=workflow%3Aversions"><img alt="versions status" src="https://github.com/actions/setup-node/workflows/versions/badge.svg"></a> <a href="https://github.com/actions/setup-node/actions?query=workflow%3Aproxy"><img alt="proxy status" src="https://github.com/actions/setup-node/workflows/proxy/badge.svg"></a> 
-</p>
+enable autosync
 
-This action sets by node environment for use in actions by:
+[![Docker Image Version (latest by date)](https://img.shields.io/docker/v/paulbouwer/hello-kubernetes)](https://hub.docker.com/repository/docker/paulbouwer/hello-kubernetes) [![Docker Image Size (latest by date)](https://img.shields.io/docker/image-size/paulbouwer/hello-kubernetes)](https://hub.docker.com/repository/docker/paulbouwer/hello-kubernetes) [![Docker Pulls](https://img.shields.io/docker/pulls/paulbouwer/hello-kubernetes)](https://hub.docker.com/repository/docker/paulbouwer/hello-kubernetes)
 
-- optionally downloading and caching a version of node - npm by version spec and add to PATH
-- registering problem matchers for error output
-- configuring authentication for GPR or npm
+This container image can be deployed on a Kubernetes cluster. When accessed via a web browser on port `8080`, it will display:
 
-# v2
+- a default **Hello world!** message
+- the pod name
+- node os information
 
-This release adds reliability for pulling node distributions from a cache of node releases.
+![Hello world! from the hello-kubernetes image](hello-kubernetes.png)
 
-```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '14'
-```
+The default "Hello world!" message displayed can be overridden using the `MESSAGE` environment variable. The default port of 8080 can be overriden using the `PORT` environment variable.
 
-The action will first check the local cache for a semver match. The hosted images have been updated with the latest of each LTS from v8, v10, v12, and v14. `self-hosted` machines will benefit from the cache as well only downloading once. The action will pull LTS versions from [node-versions releases](https://github.com/actions/node-versions/releases) and on miss or failure will fall back to the previous behavior of downloading directly from [node dist](https://nodejs.org/dist/).
+## Deploy
 
-The `node-version` input is optional. If not supplied, the node version that is PATH will be used. However, this action will still register problem matchers and support auth features. So setting up the node environment is still a valid scenario without downloading and caching versions.
+### Standard Configuration
 
-# Usage
-
-See [action.yml](action.yml)
-
-Basic:
-```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '14'
-- run: npm install
-- run: npm test
-```
-
-Check latest version:
-
-In the basic example above, the `check-latest` flag defaults to `false`. When set to `false`, the action tries to first resolve a version of node from the local cache. For information regarding locally cached versions of Node on GitHub hosted runners, check out [GitHub Actions Virtual Environments](https://github.com/actions/virtual-environments). The local version of Node in cache gets updated every couple of weeks. If unable to find a specific version in the cache, the action will then attempt to download a version of Node. Use the default or set `check-latest` to `false` if you prefer stability and if you want to ensure a specific version of Node is always used.
-
-If `check-latest` is set to `true`, the action first checks if the cached version is the latest one. If the locally cached version is not the most up-to-date, a version of Node will then be downloaded. Set `check-latest` to `true` it you want the most up-to-date version of Node to always be used.
-
-> Setting `check-latest` to `true` has performance implications as downloading versions of Node is slower than using cached versions
+Deploy to your Kubernetes cluster using the hello-kubernetes.yaml, which contains definitions for the service and deployment objects:
 
 ```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '14'
-    check-latest: true
-- run: npm install
-- run: npm test
+# hello-kubernetes.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-kubernetes
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: hello-kubernetes
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-kubernetes
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-kubernetes
+  template:
+    metadata:
+      labels:
+        app: hello-kubernetes
+    spec:
+      containers:
+      - name: hello-kubernetes
+        image: paulbouwer/hello-kubernetes:1.9
+        ports:
+        - containerPort: 8080
 ```
 
-Matrix Testing:
+```bash
+$ kubectl apply -f yaml/hello-kubernetes.yaml
+```
+
+This will display a **Hello world!** message when you hit the service endpoint in a browser. You can get the service endpoint ip address by executing the following command and grabbing the returned external ip address value:
+
+```bash
+$ kubectl get service hello-kubernetes
+```
+
+### Customise Message
+
+You can customise the message displayed by the `hello-kubernetes` container. Deploy using the hello-kubernetes.custom-message.yaml, which contains definitions for the service and deployment objects.
+
+In the definition for the deployment, add an `env` variable with the name of `MESSAGE`. The value you provide will be displayed as the custom message.
+
 ```yaml
-jobs:
-  build:
-    runs-on: ubuntu-16.04
-    strategy:
-      matrix:
-        node: [ '12', '14' ]
-    name: Node ${{ matrix.node }} sample
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup node
-        uses: actions/setup-node@v2
-        with:
-          node-version: ${{ matrix.node }}
-      - run: npm install
-      - run: npm test
+# hello-kubernetes.custom-message.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-kubernetes-custom
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+  selector:
+    app: hello-kubernetes-custom
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-kubernetes-custom
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-kubernetes-custom
+  template:
+    metadata:
+      labels:
+        app: hello-kubernetes-custom
+    spec:
+      containers:
+      - name: hello-kubernetes
+        image: paulbouwer/hello-kubernetes:1.9
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MESSAGE
+          value: I just deployed this on Kubernetes!
 ```
 
-Architecture:
+```bash
+$ kubectl apply -f yaml/hello-kubernetes.custom-message.yaml
+```
 
-You can use any of the [supported operating systems](https://docs.github.com/en/actions/reference/virtual-environments-for-github-hosted-runners), and the compatible `architecture` can be selected using `architecture`. Values are `x86`, `x64`, `arm64`, `armv6l`, `armv7l`, `ppc64le`, `s390x` (not all of the architectures are available on all platforms).
+### Specify Custom Port
 
-When using `architecture`, `node-version` must be provided as well.
+By default, the `hello-kubernetes` app listens on port `8080`. If you have a requirement for the app to listen on another port, you can specify the port via an env variable with the name of PORT. Remember to also update the `containers.ports.containerPort` value to match.
+
+Here is an example:
+
 ```yaml
-jobs:
-  build:
-    runs-on: windows-latest
-    name: Node sample
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '14'
-          architecture: 'x64' # optional, x64 or x86. If not specified, x64 will be used by default
-      - run: npm install
-      - run: npm test
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-kubernetes-custom
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-kubernetes-custom
+  template:
+    metadata:
+      labels:
+        app: hello-kubernetes-custom
+    spec:
+      containers:
+      - name: hello-kubernetes
+        image: paulbouwer/hello-kubernetes:1.9
+        ports:
+        - containerPort: 80
+        env:
+        - name: PORT
+          value: "80"
 ```
 
-Multiple Operating Systems and Architectures:
+## Cutomize URL context path
+
+If you have an ingress that routes to a custom context path then you can customize the URL context path. The css files and the images will be loaded properly in that case.
 
 ```yaml
-jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        node_version:
-          - 10
-          - 12
-          - 14
-        architecture:
-          - x64
-        # an extra windows-x86 run:
-        include:
-          - os: windows-2016
-            node_version: 12
-            architecture: x86
-    name: Node ${{ matrix.node_version }} - ${{ matrix.architecture }} on ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v2
-      - name: Setup node
-        uses: actions/setup-node@v2
-        with:
-          node-version: ${{ matrix.node_version }}
-          architecture: ${{ matrix.architecture }}
-      - run: npm install
-      - run: npm test
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-kubernetes-custom
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: hello-kubernetes-custom
+  template:
+    metadata:
+      labels:
+        app: hello-kubernetes-custom
+    spec:
+      containers:
+      - name: hello-kubernetes
+        image: paulbouwer/hello-kubernetes:1.9
+        ports:
+        - containerPort: 8080
+        env:
+        - name: MESSAGE
+          value: I just deployed this on Kubernetes!
+        - name: CONTEXT_PATH
+          value: "/api/v1/hello-kubernetes/"
 ```
 
-Publish to npmjs and GPR with npm:
-```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '10.x'
-    registry-url: 'https://registry.npmjs.org'
-- run: npm install
-- run: npm publish
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-- uses: actions/setup-node@v2
-  with:
-    registry-url: 'https://npm.pkg.github.com'
-- run: npm publish
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+## Build Container Image
+
+If you'd like to build the image yourself, then you can do so as follows. The `build-arg` parameters provides metadata as defined in [OCI image spec annotations](https://github.com/opencontainers/image-spec/blob/master/annotations.md).
+
+Bash
+```bash
+$ docker build --no-cache --build-arg IMAGE_VERSION="1.9" --build-arg IMAGE_CREATE_DATE="`date -u +"%Y-%m-%dT%H:%M:%SZ"`" --build-arg IMAGE_SOURCE_REVISION="`git rev-parse HEAD`" -f Dockerfile -t "hello-kubernetes:1.9" app
 ```
 
-Publish to npmjs and GPR with yarn:
-```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '10.x'
-    registry-url: <registry url>
-- run: yarn install
-- run: yarn publish
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.YARN_TOKEN }}
-- uses: actions/setup-node@v2
-  with:
-    registry-url: 'https://npm.pkg.github.com'
-- run: yarn publish
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+Powershell
+```powershell
+PS> docker build --no-cache --build-arg IMAGE_VERSION="1.9" --build-arg IMAGE_CREATE_DATE="$(Get-Date((Get-Date).ToUniversalTime()) -UFormat '%Y-%m-%dT%H:%M:%SZ')" --build-arg IMAGE_SOURCE_REVISION="$(git rev-parse HEAD)" -f Dockerfile -t "hello-kubernetes:1.9" app
 ```
 
-Use private packages:
-```yaml
-steps:
-- uses: actions/checkout@v2
-- uses: actions/setup-node@v2
-  with:
-    node-version: '10.x'
-    registry-url: 'https://registry.npmjs.org'
-# Skip post-install scripts here, as a malicious
-# script could steal NODE_AUTH_TOKEN.
-- run: npm install --ignore-scripts
-  env:
-    NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-# `npm rebuild` will run all those post-install scripts for us.
-- run: npm rebuild && npm run prepare --if-present
-```
+## Develop Application
 
+If you have [VS Code](https://code.visualstudio.com/) and the [Visual Studio Code Remote - Containers](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) extension installed, the `.devcontainer` folder will be used to build a container based node.js 13 development environment. 
 
-# License
+Port `8080` has been configured to be forwarded to your host. If you run `npm start` in the `app` folder in the VS Code Remote Containers terminal, you will be able to access the website on `http://localhost:8080`. You can change the port in the `.devcontainer\devcontainer.json` file under the `appPort` key.
 
-The scripts and documentation in this project are released under the [MIT License](LICENSE)
-
-# Contributions
-
-Contributions are welcome!  See [Contributor's Guide](docs/contributors.md)
-
-## Code of Conduct
-
-:wave: Be nice.  See [our code of conduct](CONDUCT)
+See [here](https://code.visualstudio.com/docs/remote/containers) for more details on working with this setup.
