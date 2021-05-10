@@ -19,16 +19,12 @@ jobs:
     steps:
        - uses: actions/checkout@v2
        - name: Use Node.js
-         uses: actions/setup-node@v2.1.5
+         uses: actions/setup-node@v1
          with:
           node-version: '12.x'
-       - run: npm ci
-       - run: npm run build
-       - run: npm run format-check
+       - run: npm install
+       - run: npm run
        - run: npm test
-       - name: Verify no unstaged changes
-         if: runner.os != 'windows'
-         run: __tests__/verify-no-unstaged-changes.sh
       
        - name: Check Out Repo 
          uses: actions/checkout@v2
