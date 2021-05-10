@@ -23,12 +23,12 @@ jobs:
          with:
           node-version: '12.x'
        - run: npm ci
-      - run: npm run build
-      - run: npm run format-check
-      - run: npm test
-      - name: Verify no unstaged changes
-        if: runner.os != 'windows'
-        run: __tests__/verify-no-unstaged-changes.sh
+       - run: npm run build
+       - run: npm run format-check
+       - run: npm test
+       - name: Verify no unstaged changes
+         if: runner.os != 'windows'
+         run: __tests__/verify-no-unstaged-changes.sh
       
        - name: Check Out Repo 
          uses: actions/checkout@v2
